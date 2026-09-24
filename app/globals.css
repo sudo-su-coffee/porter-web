@@ -248,6 +248,7 @@ header[aria-label="Server desktop"] { backdrop-filter: blur(22px) saturate(140%)
 
 /* API-backed states use the same semantic colors in every screen. */
 .status-online { color: var(--success); }
+.status-success { color: var(--success); }
 .status-warning { color: var(--warning); }
 .status-danger { color: var(--danger); }
 .status-accent { color: var(--accent); }

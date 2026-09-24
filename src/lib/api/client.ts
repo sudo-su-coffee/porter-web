@@ -3,33 +3,71 @@ import { getInjectedDesktopConfig, localAuthHeaderName } from "@/src/lib/runtime
 
 export class ApiError extends Error {
   status: number;
+  code?: string;
+  requestId?: string;
+  fields?: Record<string, string | string[]>;
 
-  constructor(message: string, status: number) {
+  constructor(
+    message: string,
+    status: number,
+    details?: { code?: string; requestId?: string; fields?: Record<string, string | string[]> },
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = details?.code;
+    this.requestId = details?.requestId;
+    this.fields = details?.fields;
   }
 }
 
+type StructuredError = {
+  code?: string;
+  message?: string;
+  error?: string;
+  fields?: Record<string, string | string[]>;
+  request_id?: string;
+  requestId?: string;
+};
+
 async function readError(response: Response) {
+  let details: StructuredError | undefined;
   try {
-    const body = (await response.json()) as { error?: string };
-    if (body.error) return body.error;
+    details = (await response.json()) as StructuredError;
   } catch {
     // Ignore non-JSON error bodies.
   }
-  if (response.status === 401) return "unauthorized";
-  if (response.status === 502 || response.status === 503) {
-    return "unable to connect to server";
-  }
-  if (response.status === 403) return "permission denied";
-  if (response.status === 404) return "file not found";
-  return "request failed";
+  const message =
+    details?.message ||
+    details?.error ||
+    (response.status === 401
+      ? "unauthorized"
+      : response.status === 502 || response.status === 503
+        ? "unable to connect to server"
+        : response.status === 403
+          ? "permission denied"
+          : response.status === 404
+            ? "file not found"
+            : "request failed");
+  return {
+    message,
+    code: details?.code,
+    requestId: details?.request_id || details?.requestId || response.headers.get("X-Request-ID") || undefined,
+    fields: details?.fields,
+  };
 }
 
 const REQUEST_TIMEOUT_MS = 5000;
 
-type RequestOptions = RequestInit & { timeoutMs?: number };
+export type RequestOptions = RequestInit & {
+  timeoutMs?: number;
+  /** Porter mutation contract: retry-safe writes should carry an idempotency key. */
+  idempotencyKey?: string;
+  /** Porter optimistic concurrency contract. */
+  ifMatch?: string;
+  /** Correlates a UI action with backend logs and durable events. */
+  requestId?: string;
+};
 
 export async function apiRequest<T>(path: string, init?: RequestOptions): Promise<T> {
   const headers = new Headers(init?.headers);
@@ -38,6 +76,9 @@ export async function apiRequest<T>(path: string, init?: RequestOptions): Promis
   }
   headers.set("Cache-Control", "no-store");
   headers.set("Pragma", "no-cache");
+  if (init?.idempotencyKey) headers.set("Idempotency-Key", init.idempotencyKey);
+  if (init?.ifMatch) headers.set("If-Match", init.ifMatch);
+  if (init?.requestId) headers.set("X-Request-ID", init.requestId);
 
   const token = getInjectedDesktopConfig()?.localAuthToken?.trim();
   if (token && !headers.has(localAuthHeaderName())) {
@@ -80,7 +121,8 @@ export async function apiRequest<T>(path: string, init?: RequestOptions): Promis
   }
 
   if (!response.ok) {
-    throw new ApiError(await readError(response), response.status);
+    const error = await readError(response);
+    throw new ApiError(error.message, response.status, error);
   }
 
   if (response.status === 204) {

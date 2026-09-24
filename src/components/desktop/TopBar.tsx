@@ -78,7 +78,7 @@ export function TopBar() {
       className="relative z-50 flex h-8 items-center justify-between gap-4 px-3 text-[13px] backdrop-blur-xl"
       style={{ background: "var(--topbar-bg)", color: "var(--topbar-fg)" }}
     >
-      <span className="shrink-0 font-semibold tracking-tight">ServerUI</span>
+      <span className="shrink-0 font-semibold tracking-tight">Porter</span>
       <div className="flex min-w-0 items-center justify-end gap-3 overflow-visible whitespace-nowrap text-[12px]">
         <div
           className="relative flex min-w-0 items-center gap-1.5"

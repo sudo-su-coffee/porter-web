@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ServerUI",
-  description: "A modern, open-source control panel for your servers.",
+  title: "Porter",
+  description: "The MicroVM-native infrastructure control plane.",
 };
 
 const themeScript = `try {
