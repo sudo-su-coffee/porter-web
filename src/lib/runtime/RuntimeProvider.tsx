@@ -12,18 +12,19 @@ type GateState =
   | { phase: "desktop-failed"; message: string };
 
 function statusMessage(config: DesktopRuntimeConfig | undefined) {
-  if (!config) return "Starting ServerUI backend...";
+  if (!config) return "Starting Porter backend...";
   if (config.status === "failed") {
-    return config.error?.trim() || "ServerUI backend failed to start.";
+    return config.error?.trim() || "Porter backend failed to start.";
   }
   if (config.status === "stopped") {
-    return config.error?.trim() || "ServerUI backend stopped unexpectedly.";
+    return config.error?.trim() || "Porter backend stopped unexpectedly.";
   }
-  return "Starting ServerUI backend...";
+  return "Starting Porter backend...";
 }
 
 export function RuntimeProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<GateState>({ phase: "checking" });
+  const isBrowser = typeof window !== "undefined" && !("isTauri" in window);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,10 +66,12 @@ export function RuntimeProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  if (typeof window === "undefined" || isBrowser) return <>{children}</>;
+
   if (state.phase === "checking" || state.phase === "desktop-starting") {
     return (
       <div className="flex h-dvh w-full items-center justify-center bg-background text-foreground">
-        <p className="text-sm opacity-80">Starting ServerUI backend...</p>
+        <p className="text-sm opacity-80">Starting Porter backend...</p>
       </div>
     );
   }
@@ -76,7 +79,7 @@ export function RuntimeProvider({ children }: { children: ReactNode }) {
   if (state.phase === "desktop-failed") {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-2 bg-background px-6 text-center text-foreground">
-        <p className="text-base font-medium">Unable to connect to local ServerUI backend.</p>
+        <p className="text-base font-medium">Unable to connect to local Porter backend.</p>
         <p className="max-w-lg whitespace-pre-wrap text-sm opacity-80">{state.message}</p>
       </div>
     );

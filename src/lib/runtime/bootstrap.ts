@@ -22,6 +22,12 @@ async function isTauriShell(): Promise<boolean> {
  * Application code should not call window.__TAURI__ directly.
  */
 export async function bootstrapRuntime(): Promise<BootstrapResult> {
+  // The web deployment must never wait for desktop IPC. The explicit marker
+  // check also avoids importing the Tauri bridge in ordinary browser previews.
+  if (typeof window !== "undefined" && !("isTauri" in window)) {
+    clearInjectedDesktopConfig();
+    return { kind: "web" };
+  }
   if (!(await isTauriShell())) {
     clearInjectedDesktopConfig();
     return { kind: "web" };
